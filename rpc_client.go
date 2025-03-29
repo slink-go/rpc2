@@ -3,8 +3,8 @@ package rpc2
 import (
 	"bufio"
 	"fmt"
-	"github.com/slink-go/logging"
-	"github.com/slink-go/rpc2/codec"
+	"go.slink.ws/logging"
+	"go.slink.ws/rpc2/codec"
 	"net"
 	"net/rpc"
 )

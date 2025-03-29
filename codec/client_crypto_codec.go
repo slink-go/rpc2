@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"github.com/pkg/errors"
-	"github.com/slink-go/logging"
+	"go.slink.ws/logging"
 	"io"
 	"net/rpc"
 )

@@ -2,7 +2,7 @@ package codec
 
 import (
 	"bufio"
-	"github.com/slink-go/logging"
+	"go.slink.ws/logging"
 	"io"
 	"net/rpc"
 )
