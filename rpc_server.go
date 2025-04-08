@@ -40,7 +40,7 @@ func (s *CustomRpcServer) Accept(ctx context.Context, listener net.Listener) {
 		case <-ctx.Done():
 			return
 		case conn := <-connChn:
-			go rpc.ServeConn(conn)
+			go s.ServeConn(conn)
 		}
 	}
 }
