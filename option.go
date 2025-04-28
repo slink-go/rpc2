@@ -1,9 +1,12 @@
 package rpc2
 
+/*
 type RpcConfig struct {
 	Key     []byte
 	Address string
 	Port    int
+	//ServerCodec rpc.ServerCodec
+	//ClientCodec rpc.ClientCodec
 }
 
 func DefaultRpcConfig() *RpcConfig {
@@ -11,14 +14,13 @@ func DefaultRpcConfig() *RpcConfig {
 		Key:     nil,
 		Address: "0.0.0.0",
 		Port:    2233,
+		//ServerCodec:
 	}
 }
 
 type RpcOption interface {
 	Apply(*RpcConfig)
 }
-
-// region - crypto key
 
 type cryptoKeyOpt struct {
 	value []byte
@@ -62,3 +64,4 @@ func WithPort(v int) RpcOption {
 }
 
 // endregion
+*/

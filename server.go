@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"fmt"
 	"go.slink.ws/logging"
 	"go.slink.ws/rpc2/codec"
 	"io"
@@ -11,42 +12,64 @@ import (
 	"net/rpc"
 )
 
+const (
+	tcp = "tcp"
+)
+
 type CustomRpcServer struct {
-	logger    logging.Logger
-	svr       *rpc.Server
+	address   string
+	port      int
 	cryptoKey []byte
+	svr       *rpc.Server
+	handler   ServerHandler
+	logger    logging.Logger
 }
 
-func NewRpcServer(opts ...RpcOption) *CustomRpcServer {
-	cfg := DefaultRpcConfig()
-	for _, opt := range opts {
-		if opt != nil {
-			opt.Apply(cfg)
-		}
-	}
+func NewRpcServer(opts ...ServerOption) *CustomRpcServer {
+	svr := rpc.NewServer()
 	server := &CustomRpcServer{
-		logger:    logging.GetLogger("rpc-server"),
-		svr:       rpc.NewServer(),
-		cryptoKey: cfg.Key,
+		logger:  logging.GetLogger("rpc-server"),
+		port:    2233,
+		address: "0.0.0.0",
+		handler: NewBasicServerHandler(svr), // default one
+		svr:     svr,
+	}
+	for _, opt := range opts {
+		opt(server)
 	}
 	return server
 }
 
-func (s *CustomRpcServer) Accept(ctx context.Context, listener net.Listener) {
+func (s *CustomRpcServer) Accept(ctx context.Context) error {
+
+	addr := fmt.Sprintf("%v:%v", s.address, s.port)
+
+	addy, err := net.ResolveTCPAddr(tcp, addr)
+	if err != nil {
+		return err
+	}
+
+	listener, err := net.ListenTCP(tcp, addy)
+	if err != nil {
+		return err
+	}
+
 	for {
 		connChn := make(chan net.Conn)
 		go s.waitForClient(connChn, listener)
 		select {
 		case <-ctx.Done():
-			return
+			return ctx.Err()
 		case conn := <-connChn:
 			go s.ServeConn(conn)
 		}
 	}
+
 }
 func (s *CustomRpcServer) ServeConn(conn io.ReadWriteCloser) {
 	cdc := codec.GetServerCodec(bufio.NewWriter(conn), conn, s.cryptoKey)
-	s.svr.ServeCodec(cdc)
+	defer func() { _ = cdc.Close() }()
+	s.handler.Handle(cdc)
 }
 func (s *CustomRpcServer) RegisterName(name string, service any) error {
 	return s.svr.RegisterName(name, service)
@@ -63,3 +86,7 @@ func (s *CustomRpcServer) waitForClient(connChn chan net.Conn, listener net.List
 	}
 	connChn <- conn
 }
+
+///
+// TODO: SEE: https://github.com/renevo/rpc !!!!!!!!!!!!!!!!
+//

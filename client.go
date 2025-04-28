@@ -10,29 +10,28 @@ import (
 )
 
 type CustomRpcClient struct {
-	logger    logging.Logger
-	addr      string
+	address   string
+	port      int
 	cryptoKey []byte
+	handler   ServerHandler
+	logger    logging.Logger
 }
 
-func NewRpcClient(opts ...RpcOption) *CustomRpcClient {
-	cf := &RpcConfig{}
+func NewRpcClient(opts ...ClientOption) *CustomRpcClient {
+	client := &CustomRpcClient{
+		logger:  logging.GetLogger("rpc-client"),
+		address: "127.0.0.1",
+		port:    2233,
+	}
 	for _, opt := range opts {
-		if opt != nil {
-			opt.Apply(cf)
-		}
+		opt(client)
 	}
-	server := &CustomRpcClient{
-		logger:    logging.GetLogger("rpc-client"),
-		cryptoKey: cf.Key,
-		addr:      fmt.Sprintf("%v:%v", cf.Address, cf.Port),
-	}
-	return server
+	return client
 }
 func (c *CustomRpcClient) Call(method string, args interface{}, reply interface{}) error {
 
 	// Client With Codec
-	conn, err := net.Dial("tcp", c.addr)
+	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", c.address, c.port))
 	if err != nil {
 		return err
 	}
