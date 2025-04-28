@@ -1,7 +1,10 @@
 package rpc2
 
-import "net/rpc"
+import (
+	"context"
+	"github.com/renevo/rpc"
+)
 
 type ServerHandler interface {
-	Handle(codec rpc.ServerCodec)
+	Handle(ctx context.Context, codec rpc.ServerCodec)
 }

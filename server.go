@@ -5,11 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/renevo/rpc"
 	"go.slink.ws/logging"
 	"go.slink.ws/rpc2/codec"
 	"io"
 	"net"
-	"net/rpc"
 )
 
 const (
@@ -31,7 +31,7 @@ func NewRpcServer(opts ...ServerOption) *CustomRpcServer {
 		logger:  logging.GetLogger("rpc-server"),
 		port:    2233,
 		address: "0.0.0.0",
-		handler: NewBasicServerHandler(svr), // default one
+		handler: NewBasicServerHandler(svr),
 		svr:     svr,
 	}
 	for _, opt := range opts {
@@ -59,17 +59,18 @@ func (s *CustomRpcServer) Accept(ctx context.Context) error {
 		go s.waitForClient(connChn, listener)
 		select {
 		case <-ctx.Done():
+			_ = listener.Close()
 			return ctx.Err()
 		case conn := <-connChn:
-			go s.ServeConn(conn)
+			go s.ServeConn(ctx, conn)
 		}
 	}
 
 }
-func (s *CustomRpcServer) ServeConn(conn io.ReadWriteCloser) {
+func (s *CustomRpcServer) ServeConn(ctx context.Context, conn io.ReadWriteCloser) {
 	cdc := codec.GetServerCodec(bufio.NewWriter(conn), conn, s.cryptoKey)
 	defer func() { _ = cdc.Close() }()
-	s.handler.Handle(cdc)
+	s.handler.Handle(ctx, cdc)
 }
 func (s *CustomRpcServer) RegisterName(name string, service any) error {
 	return s.svr.RegisterName(name, service)
@@ -86,7 +87,3 @@ func (s *CustomRpcServer) waitForClient(connChn chan net.Conn, listener net.List
 	}
 	connChn <- conn
 }
-
-///
-// TODO: SEE: https://github.com/renevo/rpc !!!!!!!!!!!!!!!!
-//

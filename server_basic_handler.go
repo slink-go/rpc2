@@ -1,8 +1,9 @@
 package rpc2
 
 import (
+	"context"
+	"github.com/renevo/rpc"
 	"go.slink.ws/logging"
-	"net/rpc"
 )
 
 type BasicServerHandler struct {
@@ -17,6 +18,6 @@ func NewBasicServerHandler(server *rpc.Server) *BasicServerHandler {
 	}
 }
 
-func (h *BasicServerHandler) Handle(codec rpc.ServerCodec) {
-	_ = h.svr.ServeRequest(codec) // skip error handling in basic handler
+func (h *BasicServerHandler) Handle(ctx context.Context, codec rpc.ServerCodec) {
+	_ = h.svr.ServeRequest(ctx, codec) // skip error handling in basic handler
 }

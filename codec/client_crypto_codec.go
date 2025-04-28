@@ -5,9 +5,9 @@ import (
 	"bytes"
 	"encoding/gob"
 	"github.com/pkg/errors"
+	"github.com/renevo/rpc"
 	"go.slink.ws/logging"
 	"io"
-	"net/rpc"
 )
 
 type cryptoClientCodec struct {
@@ -73,7 +73,7 @@ func (c *cryptoClientCodec) WriteRequest(r *rpc.Request, body any) (err error) {
 }
 func (c *cryptoClientCodec) ReadResponseHeader(r *rpc.Response) (err error) {
 	err = c.dec.Decode(r)
-	if err != nil {
+	if err != nil && err != io.EOF {
 		c.logger.Warning("response header decoding error: %s [%#v]", err.Error(), r)
 	}
 	return err

@@ -1,6 +1,9 @@
 package rpc2
 
-import "go.slink.ws/logging"
+import (
+	"github.com/renevo/rpc"
+	"go.slink.ws/logging"
+)
 
 type ServerOption func(*CustomRpcServer)
 
@@ -31,5 +34,11 @@ func ServerWithHandler(value ServerHandler) ServerOption {
 func ServerWithLogger(value logging.Logger) ServerOption {
 	return func(s *CustomRpcServer) {
 		s.logger = value
+	}
+}
+
+func ServerWithMiddleware(value rpc.MiddlewareFunc) ServerOption {
+	return func(s *CustomRpcServer) {
+		s.svr.Use(value)
 	}
 }

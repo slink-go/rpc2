@@ -3,9 +3,9 @@ package codec
 import (
 	"bufio"
 	"encoding/gob"
+	"github.com/renevo/rpc"
 	"go.slink.ws/logging"
 	"io"
-	"net/rpc"
 )
 
 // копипаста из net/rpc

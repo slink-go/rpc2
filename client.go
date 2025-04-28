@@ -2,18 +2,18 @@ package rpc2
 
 import (
 	"bufio"
+	"context"
 	"fmt"
+	"github.com/renevo/rpc"
 	"go.slink.ws/logging"
 	"go.slink.ws/rpc2/codec"
 	"net"
-	"net/rpc"
 )
 
 type CustomRpcClient struct {
 	address   string
 	port      int
 	cryptoKey []byte
-	handler   ServerHandler
 	logger    logging.Logger
 }
 
@@ -28,7 +28,7 @@ func NewRpcClient(opts ...ClientOption) *CustomRpcClient {
 	}
 	return client
 }
-func (c *CustomRpcClient) Call(method string, args interface{}, reply interface{}) error {
+func (c *CustomRpcClient) Call(ctx context.Context, method string, args interface{}, reply interface{}) error {
 
 	// Client With Codec
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", c.address, c.port))
@@ -38,5 +38,6 @@ func (c *CustomRpcClient) Call(method string, args interface{}, reply interface{
 	cl := rpc.NewClientWithCodec(codec.GetClientCodec(bufio.NewWriter(conn), conn, c.cryptoKey))
 	defer func() { _ = cl.Close(); _ = conn.Close() }()
 
-	return cl.Call(method, args, reply)
+	return cl.Call(ctx, method, args, reply)
+
 }

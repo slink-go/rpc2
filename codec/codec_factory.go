@@ -2,9 +2,9 @@ package codec
 
 import (
 	"bufio"
+	"github.com/renevo/rpc"
 	"go.slink.ws/logging"
 	"io"
-	"net/rpc"
 )
 
 func GetServerCodec(buf *bufio.Writer, conn io.ReadWriteCloser, key []byte) rpc.ServerCodec {

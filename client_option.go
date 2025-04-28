@@ -22,12 +22,6 @@ func ClientWithPort(value int) ClientOption {
 	}
 }
 
-func ClientWithHandler(value ServerHandler) ClientOption {
-	return func(s *CustomRpcClient) {
-		s.handler = value
-	}
-}
-
 func ClientWithLogger(value logging.Logger) ClientOption {
 	return func(s *CustomRpcClient) {
 		s.logger = value

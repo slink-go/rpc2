@@ -5,9 +5,9 @@ import (
 	"bytes"
 	"encoding/gob"
 	"github.com/pkg/errors"
+	"github.com/renevo/rpc"
 	"go.slink.ws/logging"
 	"io"
-	"net/rpc"
 )
 
 type cryptoServerCodec struct {
@@ -32,7 +32,7 @@ func newCryptoServerCodec(buf *bufio.Writer, conn io.ReadWriteCloser, key []byte
 
 func (c *cryptoServerCodec) ReadRequestHeader(r *rpc.Request) (err error) {
 	err = c.dec.Decode(r)
-	if err != nil {
+	if err != nil && err != io.EOF {
 		c.logger.Debug("request header decoding error: %s [%#v]", err.Error(), r)
 	}
 	return err
