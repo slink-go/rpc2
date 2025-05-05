@@ -60,6 +60,7 @@ func (s *CustomRpcServer) Accept(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			_ = listener.Close()
+			s.logger.Info("stopped rpc server")
 			return ctx.Err()
 		case conn := <-connChn:
 			go s.ServeConn(ctx, conn)
