@@ -8,12 +8,12 @@ import (
 	"github.com/renevo/rpc"
 	"go.slink.ws/logging"
 	"go.slink.ws/rpc2/codec"
-	"io"
 	"net"
 )
 
 const (
-	tcp = "tcp"
+	tcp            = "tcp"
+	remoteIpHeader = "CLIENT-IP-ADDRESS"
 )
 
 type CustomRpcServer struct {
@@ -68,10 +68,12 @@ func (s *CustomRpcServer) Accept(ctx context.Context) error {
 	}
 
 }
-func (s *CustomRpcServer) ServeConn(ctx context.Context, conn io.ReadWriteCloser) {
+func (s *CustomRpcServer) ServeConn(ctx context.Context, conn net.Conn) {
 	cdc := codec.GetServerCodec(bufio.NewWriter(conn), conn, s.cryptoKey)
 	defer func() { _ = cdc.Close() }()
-	s.handler.Handle(ctx, cdc)
+	addr := conn.RemoteAddr().(*net.TCPAddr)
+	cctx := context.WithValue(ctx, remoteIpHeader, addr.IP.String())
+	s.handler.Handle(cctx, cdc)
 }
 func (s *CustomRpcServer) RegisterName(name string, service any) error {
 	return s.svr.RegisterName(name, service)
