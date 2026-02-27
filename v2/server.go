@@ -9,6 +9,7 @@ import (
 	"go.slink.ws/rpc"
 	"go.slink.ws/rpc2/v2/codec"
 	"net"
+	"os"
 )
 
 const (
@@ -42,6 +43,13 @@ func NewRpcServer(opts ...ServerOption) *CustomRpcServer {
 
 func (s *CustomRpcServer) Accept(ctx context.Context) error {
 
+	defer func() {
+		if err := recover(); err != nil {
+			logging.GetLogger("tsuibo").Error("application error: %s", err)
+			os.Exit(1)
+		}
+	}()
+
 	addr := fmt.Sprintf("%v:%v", s.address, s.port)
 
 	addy, err := net.ResolveTCPAddr(tcp, addr)
@@ -51,7 +59,8 @@ func (s *CustomRpcServer) Accept(ctx context.Context) error {
 
 	listener, err := net.ListenTCP(tcp, addy)
 	if err != nil {
-		return err
+		panic(err)
+		//return err
 	}
 
 	for {
