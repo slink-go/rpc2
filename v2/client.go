@@ -11,10 +11,11 @@ import (
 )
 
 type CustomRpcClient struct {
-	address   string
-	port      int
-	cryptoKey []byte
-	logger    logging.Logger
+	address     string
+	port        int
+	cryptoKey   []byte
+	middlewares []ClientContextMiddleware
+	logger      logging.Logger
 }
 
 func NewRpcClient(opts ...ClientOption) *CustomRpcClient {
@@ -29,6 +30,10 @@ func NewRpcClient(opts ...ClientOption) *CustomRpcClient {
 	return client
 }
 func (c *CustomRpcClient) Call(ctx context.Context, method string, args interface{}, reply interface{}) error {
+
+	for _, middleware := range c.middlewares {
+		ctx = middleware(ctx)
+	}
 
 	// Client With Codec
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", c.address, c.port))
