@@ -15,6 +15,8 @@ type cryptoServerCodec struct {
 	crypto *Crypto
 	rwc    *BufferedReadWriteCloser
 	w      *bufio.Writer
+	enc    *gob.Encoder
+	dec    *gob.Decoder
 	closed bool
 }
 
@@ -29,11 +31,14 @@ func newCryptoServerCodec(buf *bufio.Writer, conn io.ReadWriteCloser, key []byte
 		crypto: crypto,
 		rwc:    rwc,
 		w:      buf,
+		enc:    gob.NewEncoder(buf),
+		dec:    gob.NewDecoder(rwc),
+		closed: false,
 	}, nil
 }
 
 func (c *cryptoServerCodec) ReadRequestHeader(r *rpc.Request) (err error) {
-	err = gob.NewDecoder(c.rwc).Decode(r)
+	err = c.dec.Decode(r)
 	if err != nil && err != io.EOF {
 		c.logger.Debug("request header decoding error: %s [%#v]", err.Error(), r)
 	}
@@ -59,7 +64,7 @@ func (c *cryptoServerCodec) ReadRequestBody(body any) (err error) {
 
 	// decode body (to []byte)
 	var decodedBody []byte
-	err = gob.NewDecoder(c.rwc).Decode(&decodedBody)
+	err = c.dec.Decode(&decodedBody)
 	if err != nil {
 		return errors.Wrap(err, "request body decoding error")
 	}
@@ -88,7 +93,7 @@ func (c *cryptoServerCodec) WriteResponse(r *rpc.Response, body any) (err error)
 }
 
 func (c *cryptoServerCodec) writeResponse(r *rpc.Response, body any) (err error) {
-	// кодируем body с помощью gob
+	// кодируем body с помощью gob (внутренний слой — свой поток)
 	var bodyBuffer bytes.Buffer
 	gobEncoder := gob.NewEncoder(&bodyBuffer)
 	if err = gobEncoder.Encode(body); err != nil {
@@ -98,28 +103,16 @@ func (c *cryptoServerCodec) writeResponse(r *rpc.Response, body any) (err error)
 	// шифруем body
 	encryptedBody := c.crypto.Encrypt(bodyBuffer.Bytes())
 
-	// кодируем заголовок с помощью gob
-	var header bytes.Buffer
-	gobEncoder = gob.NewEncoder(&header)
-	if err = gobEncoder.Encode(r); err != nil {
+	// внешняя пара кодеков: заголовок и шифр-тело пишутся постоянным энкодером,
+	// между сообщениями — magic-префикс (энкодер пишет ровно одно сообщение на Encode)
+	if err = c.enc.Encode(r); err != nil {
 		return
-	}
-
-	// кодируем сообщение с помощью gob
-	var buffer bytes.Buffer
-	gobEncoder = gob.NewEncoder(&buffer)
-	if err = gobEncoder.Encode(encryptedBody); err != nil {
-		return
-	}
-
-	if _, err = c.w.Write(header.Bytes()); err != nil {
-		return err
 	}
 	if _, err = c.w.Write(magicPrefix); err != nil {
 		return err
 	}
-	if _, err = c.w.Write(buffer.Bytes()); err != nil {
-		return err
+	if err = c.enc.Encode(encryptedBody); err != nil {
+		return
 	}
 	return c.w.Flush()
 }
