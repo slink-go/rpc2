@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"github.com/pkg/errors"
-	"github.com/renevo/rpc"
+	"go.slink.ws/rpc"
 	"go.slink.ws/logging"
 	"io"
 )

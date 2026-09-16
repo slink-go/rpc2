@@ -14,19 +14,22 @@ type cryptoClientCodec struct {
 	logger logging.Logger
 	crypto *Crypto
 	rwc    *BufferedReadWriteCloser
-	dec    *gob.Decoder
 	w      *bufio.Writer
 	closed bool
 }
 
 func newCryptoClientCodec(buf *bufio.Writer, conn io.ReadWriteCloser, key []byte) (rpc.ClientCodec, error) {
+	crypto, err := newCrypto(key)
+	if err != nil {
+		return nil, err
+	}
 	rwc := newBufferedReadWriteCloser(conn)
 	return &cryptoClientCodec{
 		logger: logging.GetLogger("crypto-client-codec"),
-		crypto: newCrypto(key),
+		crypto: crypto,
 		rwc:    rwc,
-		dec:    gob.NewDecoder(rwc),
 		w:      buf,
+		closed: false,
 	}, nil
 }
 
@@ -72,7 +75,7 @@ func (c *cryptoClientCodec) WriteRequest(r *rpc.Request, body any) (err error) {
 
 }
 func (c *cryptoClientCodec) ReadResponseHeader(r *rpc.Response) (err error) {
-	err = c.dec.Decode(r)
+	err = gob.NewDecoder(c.rwc).Decode(r)
 	if err != nil && err != io.EOF {
 		c.logger.Warning("response header decoding error: %s [%#v]", err.Error(), r)
 	}
@@ -98,7 +101,7 @@ func (c *cryptoClientCodec) ReadResponseBody(body any) (err error) {
 
 	// decode body to encrypted byte array
 	var decodedBody []byte
-	err = c.dec.Decode(&decodedBody)
+	err = gob.NewDecoder(c.rwc).Decode(&decodedBody)
 	if err != nil {
 		return errors.Wrap(err, "response body decoding error")
 	}
@@ -119,5 +122,9 @@ func (c *cryptoClientCodec) ReadResponseBody(body any) (err error) {
 
 }
 func (c *cryptoClientCodec) Close() error {
+	if c.closed {
+		return nil
+	}
+	c.closed = true
 	return c.rwc.Close()
 }

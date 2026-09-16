@@ -4,12 +4,11 @@ import (
 	"bufio"
 	"context"
 	"errors"
-	"fmt"
 	"go.slink.ws/logging"
 	"go.slink.ws/rpc"
 	"go.slink.ws/rpc2/v2/codec"
 	"net"
-	"os"
+	"strconv"
 )
 
 const (
@@ -42,60 +41,59 @@ func NewRpcServer(opts ...ServerOption) *CustomRpcServer {
 }
 
 func (s *CustomRpcServer) Accept(ctx context.Context) error {
-
-	defer func() {
-		if err := recover(); err != nil {
-			logging.GetLogger("tsuibo").Error("application error: %s", err)
-			os.Exit(1)
-		}
-	}()
-
-	addr := fmt.Sprintf("%v:%v", s.address, s.port)
-
+	addr := net.JoinHostPort(s.address, strconv.Itoa(s.port))
 	addy, err := net.ResolveTCPAddr(tcp, addr)
 	if err != nil {
 		return err
 	}
-
 	listener, err := net.ListenTCP(tcp, addy)
 	if err != nil {
-		panic(err)
-		//return err
+		return err
 	}
+	s.logger.Info("rpc server listening on %s", addr)
+
+	go func() {
+		<-ctx.Done()
+		_ = listener.Close()
+	}()
 
 	for {
-		connChn := make(chan net.Conn)
-		go s.waitForClient(connChn, listener)
-		select {
-		case <-ctx.Done():
-			_ = listener.Close()
-			s.logger.Info("stopped rpc server")
-			return ctx.Err()
-		case conn := <-connChn:
-			go s.ServeConn(ctx, conn)
-		}
-	}
-
-}
-func (s *CustomRpcServer) ServeConn(ctx context.Context, conn net.Conn) {
-	cdc := codec.GetServerCodec(bufio.NewWriter(conn), conn, s.cryptoKey)
-	defer func() { _ = cdc.Close() }()
-	addr := conn.RemoteAddr().(*net.TCPAddr)
-	cctx := context.WithValue(ctx, remoteIpHeader, addr.IP.String())
-	s.handler.Handle(cctx, cdc)
-}
-func (s *CustomRpcServer) RegisterName(name string, service any) error {
-	return s.svr.RegisterName(name, service)
-}
-
-func (s *CustomRpcServer) waitForClient(connChn chan net.Conn, listener net.Listener) {
-	defer close(connChn)
-	conn, err := listener.Accept()
-	if err != nil {
-		if !errors.Is(err, net.ErrClosed) {
+		conn, err := listener.AcceptTCP()
+		if err != nil {
+			if errors.Is(err, net.ErrClosed) {
+				return ctx.Err()
+			}
 			s.logger.Error("rpc.Accept: failed to accept client connection: %s", err)
+			continue
 		}
+		_ = conn.SetKeepAlive(true)
+		_ = conn.SetNoDelay(true)
+		go s.ServeConn(ctx, conn)
+	}
+}
+
+func (s *CustomRpcServer) ServeConn(ctx context.Context, conn net.Conn) {
+	defer func() {
+		if r := recover(); r != nil {
+			s.logger.Error("rpc: panic serving connection from %s: %v", conn.RemoteAddr(), r)
+		}
+		_ = conn.Close()
+	}()
+
+	cdc, err := codec.NewServerCodec(bufio.NewWriter(conn), conn, s.cryptoKey)
+	if err != nil {
+		s.logger.Error("rpc: create server codec: %s", err)
 		return
 	}
-	connChn <- conn
+	defer func() { _ = cdc.Close() }()
+
+	cctx := ctx
+	if addr, ok := conn.RemoteAddr().(*net.TCPAddr); ok {
+		cctx = context.WithValue(ctx, remoteIpHeader, addr.IP.String())
+	}
+	s.handler.Handle(cctx, cdc)
+}
+
+func (s *CustomRpcServer) RegisterName(name string, service any) error {
+	return s.svr.RegisterName(name, service)
 }

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/stretchr/testify/assert"
-	"net/rpc"
+	"go.slink.ws/rpc"
 	"testing"
 )
 
@@ -40,7 +40,7 @@ type testClientCodec struct {
 func initClientCodec(conn *testConnection, key []byte) testClientCodec {
 	rq := rpc.Request{
 		ServiceMethod: "test.Method",
-		Seq:           0,
+		ID:            "test-request-id",
 	}
 	body := testRq{
 		Key: "rq_test_key",
@@ -72,7 +72,7 @@ type testServerCodec struct {
 func initServerCodec(conn *testConnection, key []byte) testServerCodec {
 	rs := rpc.Response{
 		ServiceMethod: "test.Method",
-		Seq:           0,
+		ID:            "test-request-id",
 	}
 	body := testRs{
 		Key: "rs_test_key",

@@ -4,10 +4,9 @@ go 1.25.0
 
 require (
 	github.com/pkg/errors v0.9.1
-	github.com/renevo/rpc v0.2.0
 	github.com/stretchr/testify v1.11.1
 	go.slink.ws/logging v0.0.17
-	go.slink.ws/rpc v0.2.1
+	go.slink.ws/rpc v0.2.4
 )
 
 require (

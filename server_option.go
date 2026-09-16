@@ -1,7 +1,7 @@
 package rpc2
 
 import (
-	"github.com/renevo/rpc"
+	"go.slink.ws/rpc"
 	"go.slink.ws/logging"
 )
 

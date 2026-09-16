@@ -7,28 +7,50 @@ import (
 	"io"
 )
 
-func GetServerCodec(buf *bufio.Writer, conn io.ReadWriteCloser, key []byte) rpc.ServerCodec {
+// NewServerCodec возвращает серверный кодек (crypto — при непустом ключе, иначе открытый gob).
+// В отличие от GetServerCodec не паникует при ошибке создания.
+func NewServerCodec(buf *bufio.Writer, conn io.ReadWriteCloser, key []byte) (rpc.ServerCodec, error) {
 	if len(key) > 0 {
-		codec, err := newCryptoServerCodec(buf, conn, key)
+		cdc, err := newCryptoServerCodec(buf, conn, key)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		logging.GetLogger("codec").Trace("use crypto server codec")
-		return codec
+		return cdc, nil
 	}
 	logging.GetLogger("codec").Trace("use open server codec")
-	return newGobServerCodec(buf, conn)
+	return newGobServerCodec(buf, conn), nil
 }
 
-func GetClientCodec(buf *bufio.Writer, conn io.ReadWriteCloser, key []byte) rpc.ClientCodec {
+// NewClientCodec возвращает клиентский кодек (crypto — при непустом ключе, иначе открытый gob).
+// В отличие от GetClientCodec не паникует при ошибке создания.
+func NewClientCodec(buf *bufio.Writer, conn io.ReadWriteCloser, key []byte) (rpc.ClientCodec, error) {
 	if len(key) > 0 {
-		codec, err := newCryptoClientCodec(buf, conn, key)
+		cdc, err := newCryptoClientCodec(buf, conn, key)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		logging.GetLogger("codec").Trace("use crypto client codec")
-		return codec
+		return cdc, nil
 	}
 	logging.GetLogger("codec").Trace("use open client codec")
-	return newGobClientCodec(buf, conn)
+	return newGobClientCodec(buf, conn), nil
+}
+
+// Deprecated: используйте NewServerCodec. Сохранён для обратной совместимости.
+func GetServerCodec(buf *bufio.Writer, conn io.ReadWriteCloser, key []byte) rpc.ServerCodec {
+	cdc, err := NewServerCodec(buf, conn, key)
+	if err != nil {
+		panic(err)
+	}
+	return cdc
+}
+
+// Deprecated: используйте NewClientCodec. Сохранён для обратной совместимости.
+func GetClientCodec(buf *bufio.Writer, conn io.ReadWriteCloser, key []byte) rpc.ClientCodec {
+	cdc, err := NewClientCodec(buf, conn, key)
+	if err != nil {
+		panic(err)
+	}
+	return cdc
 }

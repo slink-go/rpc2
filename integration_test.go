@@ -3,7 +3,7 @@ package rpc2
 import (
 	"context"
 	"fmt"
-	"github.com/renevo/rpc"
+	"go.slink.ws/rpc"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -72,7 +72,7 @@ func startTestServer(ctx context.Context) error {
 
 	svr := NewRpcServer(
 		ServerWithAddress("0.0.0.0"),
-		ServerWithPort(2345),
+		ServerWithPort(2346),
 		ServerWithCryptoKey([]byte("0123456789ABCDEF")),
 		ServerWithMiddleware(outerLoggingMiddleware),
 		ServerWithMiddleware(innerLoggingMiddleware),
@@ -99,7 +99,7 @@ func TestClientServerIntegration(t *testing.T) {
 
 	c := NewRpcClient(
 		ClientWithAddress("127.0.0.1"),
-		ClientWithPort(2345),
+		ClientWithPort(2346),
 		ClientWithCryptoKey([]byte("0123456789ABCDEF")),
 	)
 	client := Client{

@@ -15,23 +15,25 @@ type cryptoServerCodec struct {
 	crypto *Crypto
 	rwc    *BufferedReadWriteCloser
 	w      *bufio.Writer
-	dec    *gob.Decoder
 	closed bool
 }
 
 func newCryptoServerCodec(buf *bufio.Writer, conn io.ReadWriteCloser, key []byte) (rpc.ServerCodec, error) {
+	crypto, err := newCrypto(key)
+	if err != nil {
+		return nil, err
+	}
 	rwc := newBufferedReadWriteCloser(conn)
 	return &cryptoServerCodec{
 		logger: logging.GetLogger("crypto-server-codec"),
-		crypto: newCrypto(key),
-		dec:    gob.NewDecoder(rwc),
+		crypto: crypto,
 		rwc:    rwc,
 		w:      buf,
 	}, nil
 }
 
 func (c *cryptoServerCodec) ReadRequestHeader(r *rpc.Request) (err error) {
-	err = c.dec.Decode(r)
+	err = gob.NewDecoder(c.rwc).Decode(r)
 	if err != nil && err != io.EOF {
 		c.logger.Debug("request header decoding error: %s [%#v]", err.Error(), r)
 	}
@@ -57,7 +59,7 @@ func (c *cryptoServerCodec) ReadRequestBody(body any) (err error) {
 
 	// decode body (to []byte)
 	var decodedBody []byte
-	err = c.dec.Decode(&decodedBody)
+	err = gob.NewDecoder(c.rwc).Decode(&decodedBody)
 	if err != nil {
 		return errors.Wrap(err, "request body decoding error")
 	}
@@ -78,12 +80,18 @@ func (c *cryptoServerCodec) ReadRequestBody(body any) (err error) {
 
 }
 func (c *cryptoServerCodec) WriteResponse(r *rpc.Response, body any) (err error) {
+	if err = c.writeResponse(r, body); err != nil {
+		c.logger.Warning("rpc: response encoding error: %s", err.Error())
+		_ = c.Close()
+	}
+	return err
+}
 
+func (c *cryptoServerCodec) writeResponse(r *rpc.Response, body any) (err error) {
 	// кодируем body с помощью gob
 	var bodyBuffer bytes.Buffer
 	gobEncoder := gob.NewEncoder(&bodyBuffer)
 	if err = gobEncoder.Encode(body); err != nil {
-		c.logger.Warning("rpc: gob body encoding error: %s", err.Error())
 		return
 	}
 
@@ -94,7 +102,6 @@ func (c *cryptoServerCodec) WriteResponse(r *rpc.Response, body any) (err error)
 	var header bytes.Buffer
 	gobEncoder = gob.NewEncoder(&header)
 	if err = gobEncoder.Encode(r); err != nil {
-		c.logger.Warning("rpc: gob header encoding error: %s", err.Error())
 		return
 	}
 
@@ -102,7 +109,6 @@ func (c *cryptoServerCodec) WriteResponse(r *rpc.Response, body any) (err error)
 	var buffer bytes.Buffer
 	gobEncoder = gob.NewEncoder(&buffer)
 	if err = gobEncoder.Encode(encryptedBody); err != nil {
-		c.logger.Warning("rpc: gob body encoding error: %s", err.Error())
 		return
 	}
 
@@ -116,7 +122,6 @@ func (c *cryptoServerCodec) WriteResponse(r *rpc.Response, body any) (err error)
 		return err
 	}
 	return c.w.Flush()
-
 }
 func (c *cryptoServerCodec) Close() error {
 	if c.closed {

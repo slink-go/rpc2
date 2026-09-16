@@ -12,12 +12,9 @@ type BasicServerHandler struct {
 }
 
 func NewBasicServerHandler(server *rpc.Server) *BasicServerHandler {
-	return &BasicServerHandler{
-		logger: logging.GetLogger("basic-handler"),
-		svr:    server,
-	}
+	return &BasicServerHandler{logger: logging.GetLogger("basic-handler"), svr: server}
 }
 
 func (h *BasicServerHandler) Handle(ctx context.Context, codec rpc.ServerCodec) {
-	_ = h.svr.ServeRequest(ctx, codec) // skip error handling in basic handler
+	h.svr.ServeCodec(ctx, codec)
 }

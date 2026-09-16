@@ -6,6 +6,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"crypto/sha256"
 	"fmt"
 )
 
@@ -15,21 +16,34 @@ type Crypto struct {
 	nonceSize int
 }
 
-func newCrypto(key []byte) *Crypto {
-	block, err := aes.NewCipher(key)
+// normalizeKey приводит произвольный "секрет" к валидному ключу AES.
+// Ключи ровно 16/24/32 байта используются как есть (обратная совместимость),
+// всё остальное деривируется SHA-256 в 32 байта.
+func normalizeKey(key []byte) []byte {
+	switch len(key) {
+	case 16, 24, 32:
+		return key
+	default:
+		sum := sha256.Sum256(key)
+		return sum[:]
+	}
+}
+
+func newCrypto(key []byte) (*Crypto, error) {
+	block, err := aes.NewCipher(normalizeKey(key))
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("rpc: create cipher: %w", err)
 	}
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("rpc: create gcm: %w", err)
 	}
 
 	return &Crypto{
 		block:     block,
 		gcm:       gcm,
 		nonceSize: gcm.NonceSize(),
-	}
+	}, nil
 }
 
 func (c *Crypto) Encrypt(plaintext []byte) (ciphertext []byte) {

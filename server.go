@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/renevo/rpc"
+	"go.slink.ws/rpc"
 	"go.slink.ws/logging"
 	"go.slink.ws/rpc2/codec"
 	"net"

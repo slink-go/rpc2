@@ -3,11 +3,11 @@ package rpc2
 import (
 	"bufio"
 	"context"
-	"fmt"
-	"github.com/renevo/rpc"
 	"go.slink.ws/logging"
+	"go.slink.ws/rpc"
 	"go.slink.ws/rpc2/codec"
 	"net"
+	"strconv"
 )
 
 type CustomRpcClient struct {
@@ -31,7 +31,7 @@ func NewRpcClient(opts ...ClientOption) *CustomRpcClient {
 func (c *CustomRpcClient) Call(ctx context.Context, method string, args interface{}, reply interface{}) error {
 
 	// Client With Codec
-	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", c.address, c.port))
+	conn, err := net.Dial("tcp", net.JoinHostPort(c.address, strconv.Itoa(c.port)))
 	if err != nil {
 		return err
 	}

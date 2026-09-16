@@ -3,7 +3,7 @@ package codec
 import (
 	"bufio"
 	"encoding/gob"
-	"github.com/renevo/rpc"
+	"go.slink.ws/rpc"
 	"go.slink.ws/logging"
 	"io"
 )
