@@ -56,7 +56,8 @@ func (c *Crypto) Encrypt(plaintext []byte) ([]byte, error) {
 	if _, err := rand.Read(nonce); err != nil {
 		return nil, fmt.Errorf("rpc: nonce generate: %w", err)
 	}
-	return c.gcm.Seal(nil, nonce, plaintext, nil), nil
+	sealed := c.gcm.Seal(nil, nonce, plaintext, nil)
+	return append(nonce, sealed...), nil
 }
 
 func (c *Crypto) Decrypt(ciphertext []byte) ([]byte, error) {
@@ -89,15 +90,29 @@ func writeCryptoBody(encBuf *bufio.Writer, crypto *Crypto, body any) error {
 }
 
 // readCryptoBodySource читает CRYPT-префикс и gob-блоб из src, расшифровывает
-// и возвращает JSON-байты тела.
+// и возвращает JSON-байты тела. Читается напрямую (без буферизации поверх),
+// чтобы не потерять байты следующего сообщения, уже попавшие в буфер.
 func readCryptoBodySource(src io.Reader, crypto *Crypto, maxBody int64) ([]byte, error) {
 	budget := &budgetReader{r: src, left: maxBody}
-	magic := make([]byte, len(magicPrefix))
-	if _, err := io.ReadFull(budget, magic); err != nil {
-		return nil, fmt.Errorf("rpc: crypto prefix read: %w", err)
-	}
-	if !bytes.Equal(magic, magicPrefix) {
-		return nil, fmt.Errorf("rpc: invalid crypto prefix: %w", ErrInvalidMagic)
+	// json.Encoder разделяет сообщения '\n' — пропускаем пробельные разделители
+	// перед префиксом
+	magic := make([]byte, 0, len(magicPrefix))
+	var one [1]byte
+	for len(magic) < len(magicPrefix) {
+		if _, err := io.ReadFull(budget, one[:]); err != nil {
+			return nil, fmt.Errorf("rpc: crypto prefix read: %w", err)
+		}
+		b := one[0]
+		if len(magic) == 0 {
+			switch b {
+			case ' ', '\t', '\n', '\r':
+				continue
+			}
+		}
+		if b != magicPrefix[len(magic)] {
+			return nil, fmt.Errorf("rpc: invalid crypto prefix: %w", ErrInvalidMagic)
+		}
+		magic = append(magic, b)
 	}
 	var blob []byte
 	if err := gob.NewDecoder(budget).Decode(&blob); err != nil {
@@ -179,12 +194,22 @@ func (c *jsonCryptoServerCodec) ReadRequestHeader(r *rpc.Request) (err error) {
 
 func (c *jsonCryptoServerCodec) ReadRequestBody(body any) (err error) {
 	c.budget.resetBudget(c.maxBody)
-	// json.Decoder мог буферизовать начало тела — отдаём остаток первым
-	src := io.MultiReader(c.dec.Buffered(), c.budget)
-	if err = decodeCryptoBodySource(src, c.crypto, c.maxBody, body); err != nil {
-		c.logger.Warning("request body decoding error: %s", err)
+	// json.Decoder мог буферизовать начало (или всё) тела — читаем остаток
+	// буфера первым и переустанавливаем декодер для следующего заголовка,
+	// иначе следующий Decode повторно распарсит уже прочитанные байты.
+	bufBytes, err := io.ReadAll(c.dec.Buffered())
+	if err != nil {
+		return err
 	}
-	return err
+	bufSrc := bytes.NewReader(bufBytes)
+	src := io.MultiReader(bufSrc, c.budget)
+	decErr := decodeCryptoBodySource(src, c.crypto, c.maxBody, body)
+	rest := bufBytes[len(bufBytes)-bufSrc.Len():]
+	c.dec = json.NewDecoder(io.MultiReader(bytes.NewReader(rest), c.budget))
+	if decErr != nil {
+		c.logger.Warning("request body decoding error: %s", decErr)
+	}
+	return decErr
 }
 
 func (c *jsonCryptoServerCodec) WriteResponse(r *rpc.Response, body any) (err error) {
@@ -269,11 +294,21 @@ func (c *jsonCryptoClientCodec) ReadResponseHeader(r *rpc.Response) (err error) 
 
 func (c *jsonCryptoClientCodec) ReadResponseBody(body any) (err error) {
 	c.budget.resetBudget(c.maxBody)
-	src := io.MultiReader(c.dec.Buffered(), c.budget)
-	if err = decodeCryptoBodySource(src, c.crypto, c.maxBody, body); err != nil {
-		c.logger.Warning("response body decoding error: %s", err)
+	// зеркало серверного ReadRequestBody: остаток буфера декодера первым,
+	// затем переустановка декодера для следующего заголовка
+	bufBytes, err := io.ReadAll(c.dec.Buffered())
+	if err != nil {
+		return err
 	}
-	return err
+	bufSrc := bytes.NewReader(bufBytes)
+	src := io.MultiReader(bufSrc, c.budget)
+	decErr := decodeCryptoBodySource(src, c.crypto, c.maxBody, body)
+	rest := bufBytes[len(bufBytes)-bufSrc.Len():]
+	c.dec = json.NewDecoder(io.MultiReader(bytes.NewReader(rest), c.budget))
+	if decErr != nil {
+		c.logger.Warning("response body decoding error: %s", decErr)
+	}
+	return decErr
 }
 
 func (c *jsonCryptoClientCodec) Close() error {

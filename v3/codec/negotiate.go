@@ -11,9 +11,30 @@ import (
 )
 
 // jsonFirstByte — первый байт JSON-заголовка ('{', 0x7B).
-// gob-поток всегда начинается с определения типа: отрицательный type-id
-// кодируется байтами ≥ 0x80, поэтому коллизия sniff'а невозможна.
+//
+// Эмпирика (Go 1.27, gob): первый байт свежего gob-потока типовых заголовков
+// — 0x39 (Request), 0x45 (Response), 0x16 (прочие struct), т.е. < 0x80;
+// формальный инвариант «коллизии нет» — типовой gob-поток не начинается с
+// «{». Защита от экзотической коллизии (type-id даёт байт 0x7B): проверяется
+// и второй байт — у JSON это кавычка/пробельный, gob там валидным JSON не
+// бывает.
 const jsonFirstByte = '{'
+
+// isJSONStream — начинается ли поток с валидного JSON-объекта.
+func isJSONStream(b []byte) bool {
+	if len(b) == 0 || b[0] != jsonFirstByte {
+		return false
+	}
+	if len(b) < 2 {
+		// обрезанный поток: решит JSON-декодер
+		return true
+	}
+	switch b[1] {
+	case '"', ' ', '\t', '\n', '\r':
+		return true
+	}
+	return false
+}
 
 // prefixConn — соединение с replay'ем: чтение идёт через bufio.Reader
 // (прочитанный sniff'ом байт остаётся в буфере и возвращается первому
@@ -23,20 +44,20 @@ type prefixConn struct {
 	io.WriteCloser
 }
 
-// sniffServerConn определяет транспорт соединения по первому байту:
-// '{' → JSON-кодек, иначе — legacy-путь (gob/crypto), байт-в-байт как в v2.
-// Всегда возвращает соединение с replay'ем уже прочитанных байтов.
+// sniffServerConn определяет транспорт соединения по первым двум байтам:
+// JSON-объект → JSON-кодек, иначе — legacy-путь (gob/crypto), байт-в-байт
+// как в v2. Всегда возвращает соединение с replay'ем прочитанных байтов.
 func sniffServerConn(conn io.ReadWriteCloser) (io.ReadWriteCloser, bool, error) {
 	br := bufio.NewReader(conn)
-	first, err := br.Peek(1)
-	if err != nil {
+	first, err := br.Peek(2)
+	if len(first) == 0 {
 		if errors.Is(err, io.EOF) {
 			// пустое соединение: отдаём legacy-пути, там EOF завершит цикл
 			return &prefixConn{Reader: br, WriteCloser: conn}, false, nil
 		}
 		return nil, false, fmt.Errorf("rpc: sniff peek: %w", err)
 	}
-	return &prefixConn{Reader: br, WriteCloser: conn}, first[0] == jsonFirstByte, nil
+	return &prefixConn{Reader: br, WriteCloser: conn}, isJSONStream(first), nil
 }
 
 // NewServerCodecV3 — серверная фабрика кодеков rpc2/v3: sniff первого байта,
