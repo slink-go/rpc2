@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.slink.ws/rpc"
+	"go.slink.ws/rpc2/v3/codec"
 )
 
 // fakeClient записывает вызов и возвращает заданную ошибку/ответ.
@@ -169,4 +171,65 @@ func TestInvokeTimeoutFromContext(t *testing.T) {
 	_, cerr := inv.Invoke(context.Background(), testTarget, "miki.Get", []byte(`{}`), nil)
 	require.NotNil(t, cerr)
 	assert.Equal(t, CodeTransport, cerr.Code)
+}
+
+func TestInvokeRequestPayloadOverLimit(t *testing.T) {
+	t.Parallel()
+	fc := &fakeClient{reply: `{}`}
+	inv := newTestInvoker(fc, InvokerWithMaxPayload(16))
+
+	_, cerr := inv.Invoke(context.Background(), testTarget, "miki.Get", []byte(`{"pad":"xxxxxxxxxxxx"}`), nil)
+	require.NotNil(t, cerr)
+	assert.Equal(t, CodePayload, cerr.Code)
+	assert.Contains(t, cerr.Message, "request payload")
+	assert.Empty(t, fc.gotMeth, "клиент не создаётся при превышении request-лимита")
+}
+
+func TestInvokeResponsePayloadOverLimit(t *testing.T) {
+	t.Parallel()
+	fc := &fakeClient{reply: `{"pad":"xxxxxxxxxxxxxxxx"}`}
+	inv := newTestInvoker(fc, InvokerWithMaxPayload(8))
+
+	_, cerr := inv.Invoke(context.Background(), testTarget, "miki.Get", []byte(`{}`), nil)
+	require.NotNil(t, cerr)
+	assert.Equal(t, CodePayload, cerr.Code)
+	assert.Contains(t, cerr.Message, "response payload")
+}
+
+func TestInvokeDefaultPayloadLimitIsCodecDefault(t *testing.T) {
+	t.Parallel()
+	fc := &fakeClient{reply: `{}`}
+	inv := newTestInvoker(fc)
+
+	payload := make([]byte, codec.DefaultMaxJSONBody+1)
+	_, cerr := inv.Invoke(context.Background(), testTarget, "miki.Get", payload, nil)
+	require.NotNil(t, cerr)
+	assert.Equal(t, CodePayload, cerr.Code)
+	assert.Contains(t, cerr.Message, strconv.FormatInt(codec.DefaultMaxJSONBody, 10))
+}
+
+func TestInvokeConcurrencyLimit(t *testing.T) {
+	t.Parallel()
+	hold := make(chan struct{})
+	fc := &fakeClient{reply: `{}`, callWait: func(ctx context.Context) {
+		<-hold
+	}}
+	inv := newTestInvoker(fc, InvokerWithMaxConcurrent(1))
+
+	firstDone := make(chan *CallError, 1)
+	go func() {
+		_, cerr := inv.Invoke(context.Background(), testTarget, "miki.Get", []byte(`{}`), nil)
+		firstDone <- cerr
+	}()
+
+	// Второй вызов ждёт слот и упирается в таймаут своего ctx.
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+	defer cancel()
+	_, cerr := inv.Invoke(ctx, testTarget, "miki.Get", []byte(`{}`), nil)
+	require.NotNil(t, cerr)
+	assert.Equal(t, CodeTransport, cerr.Code)
+	assert.Contains(t, cerr.Message, "concurrency limit exceeded")
+
+	close(hold)
+	assert.Nil(t, <-firstDone)
 }

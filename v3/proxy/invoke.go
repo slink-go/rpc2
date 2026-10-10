@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 	"strconv"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"go.slink.ws/logging"
 	"go.slink.ws/rpc"
 	rpc2 "go.slink.ws/rpc2/v3"
+	"go.slink.ws/rpc2/v3/codec"
 )
 
 // identityHeaderKeys — единственные заголовки, пробрасываемые наружу к
@@ -98,14 +100,37 @@ func (inv *RPCInvoker) Invoke(ctx context.Context, target Target, method string,
 		return nil, &CallError{Code: CodeTransport, Message: err.Error(), Target: tgtStr}
 	}
 
+	limit := inv.payloadLimit()
+	if int64(len(payload)) > limit {
+		return nil, &CallError{
+			Code:    CodePayload,
+			Message: fmt.Sprintf("request payload %d bytes exceeds limit %d", len(payload), limit),
+			Target:  tgtStr,
+		}
+	}
+
+	callCtx, cancel := context.WithTimeout(ctx, inv.callTimeout)
+	defer cancel()
+
+	if inv.limitCh != nil {
+		select {
+		case inv.limitCh <- struct{}{}:
+			defer func() { <-inv.limitCh }()
+		case <-callCtx.Done():
+			return nil, &CallError{
+				Code:    CodeTransport,
+				Message: "proxy: concurrency limit exceeded: " + callCtx.Err().Error(),
+				Target:  tgtStr,
+			}
+		}
+	}
+
 	client, err := inv.newClient(target)
 	if err != nil {
 		return nil, &CallError{Code: CodeTransport, Message: "proxy: client init: " + err.Error(), Target: tgtStr}
 	}
 	defer func() { _ = client.Close() }()
 
-	callCtx, cancel := context.WithTimeout(ctx, inv.callTimeout)
-	defer cancel()
 	callCtx = rpc.ContextWithHeaders(callCtx, identityHeaders(ctx, md))
 
 	var reply json.RawMessage
@@ -113,9 +138,26 @@ func (inv *RPCInvoker) Invoke(ctx context.Context, target Target, method string,
 		return nil, mapCallError(err, tgtStr)
 	}
 
+	if int64(len(reply)) > limit {
+		return nil, &CallError{
+			Code:    CodePayload,
+			Message: fmt.Sprintf("response payload %d bytes exceeds limit %d", len(reply), limit),
+			Target:  tgtStr,
+		}
+	}
+
 	out := make([]byte, len(reply))
 	copy(out, reply)
 	return out, nil
+}
+
+// payloadLimit — действующий лимит payload в обе стороны: явный
+// InvokerWithMaxPayload, иначе дефолт JSON-кодека (4MB).
+func (inv *RPCInvoker) payloadLimit() int64 {
+	if inv.maxPayload > 0 {
+		return inv.maxPayload
+	}
+	return codec.DefaultMaxJSONBody
 }
 
 // identityHeaders собирает whitelist-заголовки: значения из req.Metadata,
