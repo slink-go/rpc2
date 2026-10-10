@@ -3,7 +3,6 @@ package proxy
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -182,15 +181,6 @@ func identityHeaders(ctx context.Context, md map[string]string) rpc.Header {
 // targetString — "addr:port" для CallError.Target и логов.
 func targetString(t Target) string {
 	return net.JoinHostPort(t.Addr, strconv.Itoa(t.Port))
-}
-
-// mapCallError классифицирует ошибку вызова (T2.6 уточняет коды).
-func mapCallError(err error, target string) *CallError {
-	var srvErr rpc.ServerError
-	if errors.As(err, &srvErr) {
-		return &CallError{Code: CodeBackend, Message: srvErr.Error(), Target: target}
-	}
-	return &CallError{Code: CodeTransport, Message: err.Error(), Target: target}
 }
 
 // defaultClientFactory создаёт rpc2/v3-клиент. Транспорт нормализуется:
