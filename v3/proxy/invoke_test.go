@@ -210,9 +210,14 @@ func TestInvokeDefaultPayloadLimitIsCodecDefault(t *testing.T) {
 
 func TestInvokeConcurrencyLimit(t *testing.T) {
 	t.Parallel()
+	entered := make(chan struct{}, 1)
 	hold := make(chan struct{})
 	fc := &fakeClient{reply: `{}`, callWait: func(ctx context.Context) {
-		<-hold
+		entered <- struct{}{}
+		select {
+		case <-hold:
+		case <-ctx.Done():
+		}
 	}}
 	inv := newTestInvoker(fc, InvokerWithMaxConcurrent(1))
 
@@ -222,7 +227,10 @@ func TestInvokeConcurrencyLimit(t *testing.T) {
 		firstDone <- cerr
 	}()
 
-	// Второй вызов ждёт слот и упирается в таймаут своего ctx.
+	// Ждём, пока первый вызов реально займёт слот, — затем второй вызов
+	// гарантированно ждёт слот и упирается в таймаут своего ctx.
+	<-entered
+
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
 	defer cancel()
 	_, cerr := inv.Invoke(ctx, testTarget, "miki.Get", []byte(`{}`), nil)
