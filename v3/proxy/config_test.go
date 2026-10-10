@@ -110,3 +110,17 @@ func TestSplitHostPortDefault(t *testing.T) {
 		assert.Equal(t, tc.port, port)
 	}
 }
+
+func TestConfigFromEnvAllowlist(t *testing.T) {
+	t.Setenv("PROXY_TARGET_MAILER", "h:1")
+	t.Setenv("PROXY_ALLOWLIST", "miki.GetProgram, kata.* ,")
+
+	cfg, err := ConfigFromEnv()
+	require.NoError(t, err)
+	assert.Equal(t, []string{"miki.GetProgram", "kata.*"}, cfg.Allowlist)
+
+	t.Setenv("PROXY_ALLOWLIST", "")
+	cfg, err = ConfigFromEnv()
+	require.NoError(t, err)
+	assert.Nil(t, cfg.Allowlist)
+}

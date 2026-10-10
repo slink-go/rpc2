@@ -14,12 +14,16 @@ import (
 //	PROXY_TARGET_<SERVICE>=addr[:port]  — обязательная цель (port по умолчанию 2233)
 //	PROXY_TARGET_<SERVICE>_TRANSPORT    — auto|json|legacy (по умолчанию auto)
 //	PROXY_TARGET_<SERVICE>_SECRET       — ключ AES-GCM в hex (по умолчанию без крипты)
+//	PROXY_ALLOWLIST                     — allowlist через запятую: "Svc.Meth,Svc2.*"
+//	                                      (пусто/отсутствует — default-allow,
+//	                                      см. spec/mgmt/rpc2_proxy_decisions.md)
 //
 // <SERVICE> — имя сервиса в нижнем регистре (совпадает с RegisterName).
 const (
 	envTargetPrefix    = "PROXY_TARGET_"
 	envTransportSuffix = "_TRANSPORT"
 	envSecretSuffix    = "_SECRET"
+	envAllowlist       = "PROXY_ALLOWLIST"
 	defaultTargetPort  = 2233
 )
 
@@ -28,6 +32,8 @@ const (
 type Config struct {
 	// Targets — таблица маршрутов «имя сервиса → цель».
 	Targets map[string]Target
+	// Allowlist — записи "Service.Method" | "Service.*"; пусто — default-allow.
+	Allowlist []string
 }
 
 // ConfigFromEnv собирает Config из окружения. Ошибки парсинга возвращаются
@@ -80,6 +86,14 @@ func ConfigFromEnv() (Config, error) {
 	}
 
 	cfg := Config{Targets: make(map[string]Target, len(raw))}
+	if v := os.Getenv(envAllowlist); v != "" {
+		for _, entry := range strings.Split(v, ",") {
+			if e := strings.TrimSpace(entry); e != "" {
+				cfg.Allowlist = append(cfg.Allowlist, e)
+			}
+		}
+	}
+
 	for service, t := range raw {
 		if !t.hasAddr {
 			return Config{}, fmt.Errorf("proxy: target address for service %q is missing (set %s%s)",
