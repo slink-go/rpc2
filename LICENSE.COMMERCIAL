@@ -1,0 +1,177 @@
+COMMERCIAL LICENSE AGREEMENT
+
+Copyright (c) 2025-2026 Mikhail Kantur (the "Licensor")
+
+This Commercial License Agreement (this "Agreement") governs your use
+of the accompanying software, documentation, and related materials
+(collectively, the "Software"), unless you have concluded a separate
+written agreement with the Licensor that expressly supersedes this
+Agreement.
+
+The Software is also offered under the GNU Affero General Public
+License, version 3 only ("AGPL-3.0-only"), as set forth in the LICENSE
+file. If you do not wish to be bound by the terms of the AGPL-3.0-only,
+you may use the Software under this Agreement instead. By using,
+copying, modifying, or distributing the Software otherwise than under
+the AGPL-3.0-only, you accept this Agreement.
+
+1. Definitions
+
+   1.1 "Software" means the accompanying software, in source and
+       object code form, together with all documentation and related
+       materials provided by the Licensor under this Agreement.
+
+   1.2 "Modified Version" means any work based on the Software, or on
+       a portion of it, including but not limited to translations,
+       adaptations, revisions, and derivative works.
+
+   1.3 "Product" means any application, service, system, device, or
+       other offering developed, operated, or distributed by you that
+       incorporates the Software as an integrated component.
+
+2. Grant of License
+
+   Subject to your compliance with this Agreement, the Licensor grants
+   you a worldwide, non-exclusive, royalty-free, perpetual, and
+   irrevocable license to:
+
+   a) use, install, execute, and copy the Software, including Modified
+      Versions, for your internal business purposes;
+
+   b) create Modified Versions and other derivative works of the
+      Software;
+
+   c) reproduce, distribute, and sublicense the Software, in source or
+      object code form, solely as an integrated component of your
+      Products;
+
+   d) modify the Software and use such Modified Versions as part of
+      your Products, without any obligation to disclose, publish, or
+      release the source code of your Products or of the Modified
+      Versions.
+
+   This Agreement replaces, with respect to your use of the Software
+   under this Agreement, the obligations of the AGPL-3.0-only,
+   including any obligation to provide Corresponding Source to you or
+   to any third party, except to the extent that such obligations
+   cannot be replaced as a matter of applicable law.
+
+   The Licensor also grants you a non-exclusive, worldwide,
+   royalty-free patent license under the Licensor's essential patent
+   claims to make, use, sell, offer for sale, import, and otherwise
+   exploit your Products that incorporate the Software. This patent
+   license terminates with respect to you if you initiate patent
+   litigation against the Licensor alleging that the Software, as
+   licensed hereunder, infringes a patent.
+
+3. Restrictions
+
+   Except as expressly permitted by Sections 2 and 4, you may not:
+
+   a) reproduce, distribute, sell, lease, license, or otherwise make
+      the Software available on a standalone basis, including as a
+      standalone library, SDK, component, plugin, or development tool,
+      without the Licensor's prior written permission;
+
+   b) remove, obscure, or alter any copyright, trademark, attribution,
+      or license notices contained in or on the Software;
+
+   c) use the Licensor's name, personal data, logo, or trademarks to
+      endorse or promote your Products without the Licensor's prior
+      written permission;
+
+   d) grant sublicenses to the Software other than as provided in
+      Section 2c for the distribution of your Products;
+
+   e) use the Software in connection with, or to develop, illegal
+      content or activities, or in a manner that violates applicable
+      law.
+
+4. Distribution of Products
+
+   You may distribute your Products that incorporate the Software,
+   in object or source form, under license terms of your choosing,
+   provided that such terms do not restrict recipients of your
+   Products from exercising their rights in the Software under this
+   Agreement, and provided that your distribution does not otherwise
+   breach Section 3.
+
+5. Intellectual Property
+
+   The Software is licensed, not sold. The Licensor retains all right,
+   title, and interest in and to the Software, including all
+   intellectual property rights therein. Except for the license
+   granted in Section 2, no rights are granted to you by implication,
+   estoppel, or otherwise.
+
+6. Updates and Support
+
+   This Agreement does not entitle you to any updates, upgrades,
+   maintenance, or support for the Software. Any such services, if
+   offered, are provided under a separate agreement.
+
+7. Disclaimer of Warranty
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND
+   NON-INFRINGEMENT. THE ENTIRE RISK AS TO THE QUALITY AND
+   PERFORMANCE OF THE SOFTWARE IS WITH YOU. SHOULD THE SOFTWARE PROVE
+   DEFECTIVE, YOU ASSUME THE COST OF ALL NECESSARY SERVICING, REPAIR,
+   OR CORRECTION.
+
+8. Limitation of Liability
+
+   TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT
+   SHALL THE LICENSOR BE LIABLE FOR ANY INDIRECT, INCIDENTAL,
+   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES, OR ANY LOSS OF
+   DATA, PROFITS, OR BUSINESS INTERRUPTION, HOWEVER CAUSED AND ON ANY
+   THEORY OF LIABILITY, ARISING OUT OF OR IN CONNECTION WITH THIS
+   AGREEMENT OR THE USE OF (OR INABILITY TO USE) THE SOFTWARE, EVEN
+   IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. THE LICENSOR'S
+   TOTAL AGGREGATE LIABILITY UNDER THIS AGREEMENT SHALL NOT EXCEED
+   THE AMOUNT ACTUALLY PAID BY YOU TO THE LICENSOR UNDER THIS
+   AGREEMENT DURING THE TWELVE (12) MONTHS PRECEDING THE EVENT GIVING
+   RISE TO THE CLAIM, AND IF NO AMOUNTS WERE PAID, ZERO.
+
+9. Termination
+
+   9.1 This Agreement is effective until terminated in accordance
+       with this Section.
+
+   9.2 If you breach any term of this Agreement, your rights under
+       this Agreement terminate automatically, without notice, upon
+       expiration of thirty (30) days after the Licensor notifies you
+       of the breach and you fail to cure it within that period.
+
+   9.3 Upon termination you must cease all use of the Software under
+       this Agreement and destroy all copies of the Software in your
+       possession. Termination of this Agreement does not affect your
+       right to use the Software under the AGPL-3.0-only, provided
+       you comply with its terms.
+
+   9.4 Sections 5, 7, 8, and 9 survive termination of this Agreement.
+
+10. Miscellaneous
+
+   10.1 This Agreement constitutes the entire agreement between the
+        parties with respect to its subject matter and supersedes all
+        prior or contemporaneous understandings concerning that
+        subject matter.
+
+   10.2 If any provision of this Agreement is held unenforceable,
+        that provision shall be enforced to the maximum extent
+        permissible, and the remaining provisions shall remain in
+        full force and effect.
+
+   10.3 No failure or delay by the Licensor in exercising any right
+        under this Agreement shall constitute a waiver of that right.
+
+   10.4 You may not assign or transfer this Agreement without the
+        Licensor's prior written consent; any attempted assignment in
+        breach of this Section is void.
+
+11. Contact
+
+   Questions about this Agreement, commercial licensing, and pricing:
+   kami@slink.ws

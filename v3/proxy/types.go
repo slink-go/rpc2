@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2025-2026 Mikhail Kantur
+
 // Package proxy — generic-jrpc-proxy: вызов произвольной rpc-функции системы
 // по строке "Service.Method" с JSON-payload, без знания типов метода на стороне
 // вызывающего. Целевой jRPC-сервис сам восстанавливает аргументы из JSON
