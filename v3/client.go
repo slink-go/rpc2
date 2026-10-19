@@ -80,7 +80,12 @@ func (c *CustomRpcClient) Call(ctx context.Context, method string, args any, rep
 	if err == nil {
 		return ctx.Err()
 	}
-	if !isConnError(err) {
+	// Бизнес-ошибки сервисы возвращают в теле ответа, поэтому ошибка вызова
+	// означает неопределённое состояние соединения — сбрасываем его.
+	c.logger.Warning("rpc client %s:%d: resetting connection after %s: %v", c.address, c.port, method, err)
+	connErr := isConnError(err)
+	c.invalidate()
+	if !connErr {
 		return err
 	}
 	c.mu.Lock()
@@ -88,7 +93,6 @@ func (c *CustomRpcClient) Call(ctx context.Context, method string, args any, rep
 	alreadyFallback := c.jsonFallback
 	c.jsonFallback = true
 	c.mu.Unlock()
-	c.invalidate()
 
 	// автофолбэк: один повтор на legacy-соединении
 	if c.transport == transportAuto && wasJSON && !alreadyFallback {
@@ -101,9 +105,8 @@ func (c *CustomRpcClient) Call(ctx context.Context, method string, args any, rep
 		if err == nil {
 			return ctx.Err()
 		}
-		if isConnError(err) {
-			c.invalidate()
-		}
+		c.logger.Warning("rpc client %s:%d: resetting connection after %s: %v", c.address, c.port, method, err)
+		c.invalidate()
 		return err
 	}
 	return err

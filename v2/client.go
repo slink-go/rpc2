@@ -6,11 +6,9 @@ package rpc2
 import (
 	"bufio"
 	"context"
-	"errors"
 	"go.slink.ws/logging"
 	"go.slink.ws/rpc"
 	"go.slink.ws/rpc2/v2/codec"
-	"io"
 	"net"
 	"strconv"
 	"sync"
@@ -53,11 +51,12 @@ func (c *CustomRpcClient) Call(ctx context.Context, method string, args any, rep
 		return err
 	}
 
-	err = cl.Call(ctx, method, args, reply)
-	if err != nil {
-		if isConnError(err) {
-			c.invalidate()
-		}
+	if err = cl.Call(ctx, method, args, reply); err != nil {
+		// Бизнес-ошибки сервисы возвращают в теле ответа. Любая ошибка
+		// транспорта означает, что состояние соединения не определено:
+		// сбрасываем его, следующий вызов переподключится.
+		c.logger.Warning("rpc client %s:%d: resetting connection after %s: %v", c.address, c.port, method, err)
+		c.invalidate()
 		return err
 	}
 	if errCtx := ctx.Err(); errCtx != nil {
@@ -110,21 +109,4 @@ func (c *CustomRpcClient) invalidate() {
 		_ = c.cl.Close()
 		c.cl = nil
 	}
-}
-
-func isConnError(err error) bool {
-	if err == nil {
-		return false
-	}
-	var se rpc.ServerError
-	if errors.As(err, &se) {
-		return false
-	}
-	var ne net.Error
-	if errors.As(err, &ne) {
-		return true
-	}
-	return errors.Is(err, rpc.ErrShutdown) ||
-		errors.Is(err, io.EOF) ||
-		errors.Is(err, io.ErrUnexpectedEOF)
 }
